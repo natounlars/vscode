@@ -1,0 +1,115 @@
+name: Build VS Code for Windows
+
+on:
+  workflow_dispatch: 
+
+env:
+  NODE_VERSION: "22" 
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        architecture: 'x64'
+        cache: 'npm'
+
+    - name: Install Windows Build Tools
+      shell: powershell
+      run: |
+        choco install python --version=3.10.11 -y
+        choco install git -y
+        
+        $pythonPath = "C:\Python310"
+        if (Test-Path $pythonPath) {
+          Add-Content $env:GITHUB_PATH "$pythonPath"
+          Add-Content $env:GITHUB_PATH "$pythonPath\Scripts"
+        }
+        
+
+    - name: Install dependencies
+      shell: powershell
+      run: |
+        python -m pip install setuptools
+        
+        npm ci
+        
+        npm install
+
+    - name: Build VS Code
+      shell: powershell
+      run: |
+        Write-Host "Starting initial build..."
+        npm run gulp vscode-win32-x64
+        
+        Write-Host "Build completed successfully!"
+
+    - name: Find and list build outputs
+      shell: powershell
+      run: |
+        Write-Host "Looking for build outputs..."
+        
+       
+        Write-Host "Current directory: $(Get-Location)"
+        Write-Host "Directory contents:"
+        Get-ChildItem -Recurse | Select-Object -First 20 FullName
+        
+        
+        $parentDir = ".."
+        Write-Host "Parent directory contents:"
+        Get-ChildItem -Path $parentDir | Select-Object Name, Attributes, LastWriteTime
+        
+       
+        Write-Host "Searching for build outputs..."
+        $buildOutputs = Get-ChildItem -Path $parentDir -Filter "VSCode*" -Recurse
+        foreach ($item in $buildOutputs) {
+          Write-Host "Found: $($item.FullName) - Type: $($item.Attributes)"
+        }
+
+    - name: Package build outputs
+      shell: powershell
+      run: |
+        
+        $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+        $archiveName = "VSCode-Windows-Build-$timestamp.zip"
+        
+        Write-Host "Creating archive: $archiveName"
+        
+        
+        $buildDir = Get-ChildItem -Path ".." -Directory -Filter "VSCode-win32-x64*" | Select-Object -First 1
+        
+        if ($buildDir) {
+          Write-Host "Found build directory: $($buildDir.FullName)"
+          
+         
+          Compress-Archive -Path $buildDir.FullName -DestinationPath $archiveName -CompressionLevel Optimal
+          
+          
+          $zipInfo = Get-Item $archiveName
+          Write-Host "Archive created: $($zipInfo.Name) - Size: $($zipInfo.Length) bytes"
+        } else {
+          Write-Host "ERROR: Build directory not found!"
+          
+          
+          Write-Host "Listing all files in workspace root:"
+          Get-ChildItem -Recurse | Select-Object FullName | Out-String -Width 200
+          
+          exit 1
+        }
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: vscode-windows-build
+        path: |
+          VSCode-Windows-Build-*.zip
+        retention-days: 7
