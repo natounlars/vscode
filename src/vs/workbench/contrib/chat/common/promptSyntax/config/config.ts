@@ -96,6 +96,11 @@ export namespace PromptsConfig {
 	export const USE_NESTED_AGENT_MD = 'chat.useNestedAgentsMdFiles';
 
 	/**
+	 * Configuration key for the CLAUDE.md.
+	 */
+	export const USE_CLAUDE_MD = 'chat.useClaudeMdFile';
+
+	/**
 	 * Configuration key for agent skills usage.
 	 */
 	export const USE_AGENT_SKILLS = 'chat.useAgentSkills';
@@ -103,7 +108,12 @@ export namespace PromptsConfig {
 	/**
 	 * Configuration key for chat hooks usage.
 	 */
-	export const USE_CHAT_HOOKS = 'chat.useChatHooks';
+	export const USE_CHAT_HOOKS = 'chat.useHooks';
+
+	/**
+	 * Configuration key for enabling Claude hooks.
+	 */
+	export const USE_CLAUDE_HOOKS = 'chat.useClaudeHooks';
 
 	/**
 	 * Configuration key for enabling stronger skill adherence prompt (experimental).
